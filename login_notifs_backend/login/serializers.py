@@ -9,7 +9,8 @@ class LoginResponseSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['employee_id', 'full_name', 'email', 'modules', 'access_level']
+        fields = '__all__'
+        #fields = ['employee_id', 'full_name', 'email', 'modules', 'access_level']
         
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"

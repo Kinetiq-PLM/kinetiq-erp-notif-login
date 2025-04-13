@@ -70,11 +70,9 @@ class LoginView(APIView):
             first_name=user_data['first_name'],
             last_name=user_data['last_name'],
             email=user_data['email'],
-            password=user_data['password'],  
+            password=user_data['password'],    # might need this if we'll implement password change
             status=user_data['status'],
             type=user_data['type'],
-            created_at=user_data.get('created_at'),
-            updated_at=user_data.get('updated_at')
         )
         
         # if the user has a role, fetch that role's data

@@ -14,7 +14,10 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
-        # Get client IP for audit log
+        print("EMAIL: " + email)
+        print("PASSWORD: " + password)
+
+        # client IP for audit log
         ip_address = get_client_ip(request)
         
         if not email or not password:
@@ -32,17 +35,17 @@ class LoginView(APIView):
                 'message': 'Email and password are required'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Verify user credentials using the PostgreSQL crypt function
-        # This approach works because the password is hashed using pgcrypto
+        # verify user credentials
+        # password is hashed using pgcrypto
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM users WHERE email = %s AND password = crypt(%s, password)",
+                "SELECT * FROM admin.users WHERE email = %s AND password = crypt(%s, password)",
                 [email, password]
             )
             row = cursor.fetchone()
         
         if not row:
-            # Log failed login attempt
+            # log failed login attempt
             log_id = f"LOG-{uuid.uuid4().hex[:8].upper()}"
             AuditLog.objects.create(
                 log_id=log_id,
@@ -56,29 +59,29 @@ class LoginView(APIView):
                 'message': 'Invalid credentials'
             }, status=status.HTTP_401_UNAUTHORIZED)
         
-        # Get the column names from the cursor description
+        # get the column names from the cursor description
         columns = [col[0] for col in cursor.description]
         user_data = dict(zip(columns, row))
         
-        # Convert raw data to User instance for the serializer
+        # convert raw data to User instance for the serializer
         user = User(
             user_id=user_data['user_id'],
             employee_id=user_data.get('employee_id'),
             first_name=user_data['first_name'],
             last_name=user_data['last_name'],
             email=user_data['email'],
-            password=user_data['password'],  # This is already hashed
+            password=user_data['password'],  
             status=user_data['status'],
             type=user_data['type'],
             created_at=user_data.get('created_at'),
             updated_at=user_data.get('updated_at')
         )
         
-        # If the user has a role, fetch that role's data
+        # if the user has a role, fetch that role's data
         if user_data.get('role_id'):
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT * FROM roles_permission WHERE role_id = %s",
+                    "SELECT * FROM admin.roles_permission WHERE role_id = %s",
                     [user_data['role_id']]
                 )
                 role_row = cursor.fetchone()
@@ -87,7 +90,7 @@ class LoginView(APIView):
                     role_columns = [col[0] for col in cursor.description]
                     role_data = dict(zip(role_columns, role_row))
                     
-                    # Create a RolesPermission instance and attach it to the user
+                    # create a RolesPermission instance and attach it to the user
                     from .models import RolesPermission
                     role = RolesPermission(
                         role_id=role_data['role_id'],
@@ -98,9 +101,9 @@ class LoginView(APIView):
                     )
                     user.role = role
         
-        # Check if user is active
+        # check if user is active
         if user.status != 'Active':
-            # Log failed login for inactive account
+            # log failed login for inactive account
             log_id = f"LOG-{uuid.uuid4().hex[:8].upper()}"
             AuditLog.objects.create(
                 log_id=log_id,
@@ -114,7 +117,7 @@ class LoginView(APIView):
                 'message': 'User account is inactive'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        # Log successful login
+        # log successful login
         log_id = f"LOG-{uuid.uuid4().hex[:8].upper()}"
         AuditLog.objects.create(
             log_id=log_id,
@@ -123,7 +126,7 @@ class LoginView(APIView):
             ip_address=ip_address
         )
         
-        # Serialize the user data for the response
+        # serialize the user data for the response
         serializer = LoginResponseSerializer(user)
         
         return Response({

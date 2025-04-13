@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django_cognito_jwt"
     , "notifications"
     ,"login"
+    , "audit_log"
 ]
 
 MIDDLEWARE = [

@@ -8,6 +8,16 @@ from .serializers import LoginResponseSerializer
 from audit_log.models import AuditLog
 from audit_log.middleware import get_client_ip
 import uuid
+import requests
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+import os
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth import get_user_model
+
+
+
 
 class LoginView(APIView):
     def post(self, request):
@@ -132,3 +142,42 @@ class LoginView(APIView):
             'message': 'Login successful',
             'data': serializer.data
         }, status=status.HTTP_200_OK)
+    
+        
+
+@csrf_exempt
+def check_email_exists(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        email = data.get('email')
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM admin.users WHERE email = %s LIMIT 1", [email])
+            result = cursor.fetchone()
+
+        if result:
+            return JsonResponse({'exists': True})
+        else:
+            return JsonResponse({'exists': False})
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def reset_password(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        email = data.get('email')
+        new_password = data.get('newPassword')
+
+        # Hash the password before updating
+    from django.contrib.auth.hashers import make_password
+    hashed_password = make_password(new_password)
+    
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            UPDATE admin.users 
+            SET password = %s
+            WHERE email = %s
+        """, [hashed_password, email])
+        
+    return JsonResponse({"success": True})

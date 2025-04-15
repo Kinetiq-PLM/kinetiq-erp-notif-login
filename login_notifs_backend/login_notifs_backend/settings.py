@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-2lmqxu85alpqv3kq=&s*#s080)r777+btnw6i6-7an-h4=l-e&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -84,7 +84,11 @@ REST_FRAMEWORK = {
         "django_cognito_jwt.JSONWebTokenAuthentication",
     ),
 }
-
+CSRF_TRUSTED_ORIGINS = [
+    "http://*",
+    "https://*",
+    "http://localhost:5173"
+]
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 

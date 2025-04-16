@@ -171,13 +171,13 @@ def reset_password(request):
 
         # Hash the password before updating
     from django.contrib.auth.hashers import make_password
-    hashed_password = make_password(new_password)
+    
     
     with connection.cursor() as cursor:
         cursor.execute("""
-            UPDATE admin.users 
-            SET password = %s
-            WHERE email = %s
-        """, [hashed_password, email])
+            UPDATE admin.users
+            SET password = crypt(%s, gen_salt('bf', 06))
+            WHERE email = %s;
+        """, [new_password, email])
         
     return JsonResponse({"success": True})

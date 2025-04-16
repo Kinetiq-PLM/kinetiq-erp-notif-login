@@ -167,12 +167,25 @@ def reset_password(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         email = data.get('email')
+        old_password = data.get('oldPassword')
         new_password = data.get('newPassword')
+        pass_req = data.get('passreq')
 
-        # Hash the password before updating
-    from django.contrib.auth.hashers import make_password
-    
-    
+    if pass_req:
+        res = None
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM admin.users WHERE email = %s AND
+                                                password = crypt(%s, password)
+            """, [email, old_password])
+            res = cursor.fetchone()
+        
+        if not res:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid credentials'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
     with connection.cursor() as cursor:
         cursor.execute("""
             UPDATE admin.users

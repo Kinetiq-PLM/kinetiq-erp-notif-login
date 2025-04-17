@@ -10,7 +10,7 @@
             "concurrent"
         ],
         "profile_name": "default",
-        "project_name": "login-notifs-ba",
+        "project_name": "login-notifs-backend",
         "runtime": "python3.12",
         "s3_bucket": "kinetiq-login-notifs"
 

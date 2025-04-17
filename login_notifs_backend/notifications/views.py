@@ -1,9 +1,12 @@
-from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Notification
 from .serializers import NotificationSerializer
+import json
 
 # Create your views here.
 class NotifView(APIView):
@@ -29,3 +32,24 @@ class NotifView(APIView):
         return Response({
             'success': True,
         }, status=status.HTTP_200_OK)
+    
+@csrf_exempt
+def send_notif(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        print('Creating notif...')
+        origin_module =  data.get('module')
+        origin_submodule = data.get('submodule')
+        recipient_id = data.get('recipient_id')
+        msg = data.get('msg')
+        origin_string = origin_module
+        if origin_submodule:
+            origin_string += '/' + origin_submodule
+        print(f'({origin_string}, {recipient_id}, {msg})')
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO admin.notifications (module, to_user_id, message, notifications_status, created_at)
+                VALUES
+                    (%s, %s, %s, 'Unread', NOW());
+            """, [origin_string, recipient_id, msg])
+    return JsonResponse({"success": True})

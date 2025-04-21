@@ -60,6 +60,42 @@ def send_notif(request):
                     (%s, %s, %s, 'Unread', NOW());
             """, [origin_string, recipient_id, msg])
     return JsonResponse({"success": True})
+
+@csrf_exempt
+def send_notif_batch(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        print('Creating notifs...')
+        origin_module =  data.get('module')
+        origin_submodule = data.get('submodule')
+        recipient_ids = data.get('recipient_ids')
+        msg = data.get('msg')
+        origin_string = origin_module
+        if origin_submodule:
+            origin_string += '/' + origin_submodule
+
+        values_query = ''
+        args = []
+
+        for i in range(len(recipient_ids)):
+            values_query += "(%s, %s, %s, 'Unread', NOW())"
+            if (i < len(recipient_ids)-1):
+                values_query += ",\n"
+            args.append(origin_string)
+            args.append(recipient_ids[i])
+            args.append(msg)
+            print(f'({origin_string}, {recipient_ids[i]}, {msg})')
+            
+        print(values_query)
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO admin.notifications (module, to_user_id, message, notifications_status, created_at)
+                VALUES
+                """
+                + values_query + ";"
+            , args)
+
+    return JsonResponse({"success": True})
     
 @csrf_exempt
 @api_view(['POST'])

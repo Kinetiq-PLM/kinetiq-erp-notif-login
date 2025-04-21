@@ -1,10 +1,15 @@
+import boto3
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Notification
 from .serializers import NotificationSerializer
-
+from django.conf import settings
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 # Create your views here.
 class NotifView(APIView):
     def get(self, request):
@@ -29,3 +34,69 @@ class NotifView(APIView):
         return Response({
             'success': True,
         }, status=status.HTTP_200_OK)
+    
+@csrf_exempt
+@api_view(['POST'])
+@parser_classes([MultiPartParser])
+def upload_to_s3(request):
+    import json
+    data = json.loads(request.body)
+    filename = data['filename']
+    directory = data['directory']
+    content_type = data.get('contentType', 'application/octet-stream')
+
+    key = f"{directory.rstrip('/')}/{filename}"
+
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION,
+    )
+
+    presigned_url = s3.generate_presigned_url(
+        ClientMethod='put_object',
+        Params={
+            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+            'Key': key,
+            'ContentType': content_type
+        },
+        ExpiresIn=300  # 5 minutes
+    )
+
+    public_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/{key}"
+    return JsonResponse({'uploadUrl': presigned_url, 'fileUrl': public_url})
+
+
+@csrf_exempt
+@api_view(['GET'])
+def retrieve_directory(request):
+    directory = request.query_params.get('directory')
+    if not directory:
+        return Response({"error": "Missing 'directory' query param"}, status=400)
+
+    prefix = directory.rstrip('/') + '/'  # ensure it's formatted like a "folder"
+
+    s3 = boto3.client('s3',
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION,
+    )
+
+    try:
+        response = s3.list_objects_v2(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+            Prefix=prefix,
+            MaxKeys=50
+        )
+
+        contents = response.get('Contents', [])
+        file_urls = [
+            f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/{item['Key']}"
+            for item in contents if not item['Key'].endswith('/')
+        ]
+
+        return Response({"files": file_urls})
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)

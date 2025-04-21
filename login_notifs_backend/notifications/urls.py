@@ -1,6 +1,8 @@
 from django.urls import path
-from .views import NotifView
-
+from .views import NotifView, upload_to_s3, retrieve_directory
+  
 urlpatterns = [
     path('notifications/', NotifView.as_view(), name='notifications'),
+    path('upload-to-s3/', upload_to_s3, name='upload_to_s3'),
+    path('retrieve-s3-directory/', retrieve_directory, name='retrieve_directory'),
 ]

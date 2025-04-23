@@ -22,7 +22,7 @@ class NotifView(APIView):
         req_user_id = str(request.query_params.get('user_id'))
         print(f'(notifs dbg) Notif view get with user id {req_user_id}')
         print(f'(notifs dbg) user_id type: {type(req_user_id)}, value: {repr(req_user_id)}')
-        notifs = Notification.objects.filter(to_user_id=req_user_id.strip())
+        notifs = Notification.objects.filter(to_user_id=req_user_id.strip()).order_by('-created_at')
         print(f'(notifs dbg) generated query: {notifs.query}')
         serializer = NotificationSerializer(notifs, many = True)
         print('(notifs dbg)', notifs)
